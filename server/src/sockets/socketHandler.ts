@@ -401,8 +401,13 @@ export const setupSocketHandlers = (io: Server): void => {
         if (breakoutId) {
           const breakout = activeBreakouts.get(breakoutId);
           presenceStore.updateChannel(socket.user.id, undefined, undefined, breakout?.name || 'Private Breakout', 'in-breakout');
-          io.emit('presence:sync', presenceStore.getAllPresences());
+        } else if (channelId) {
+          const channel = await Channel.findById(channelId);
+          if (channel) {
+            presenceStore.updateChannel(socket.user.id, channel.roomId.toString(), channel._id.toString(), channel.name, 'in-call');
+          }
         }
+        io.emit('presence:sync', presenceStore.getAllPresences());
 
         const existingParticipants = Array.from(io.sockets.adapter.rooms.get(roomKey) || [])
           .filter((id) => id !== socket.id);
@@ -419,11 +424,13 @@ export const setupSocketHandlers = (io: Server): void => {
       }
     });
 
-    socket.on('webrtc:leave_voice_room', (data: { channelId?: string; breakoutId?: string }, callback?: AckCallback) => {
+    socket.on('webrtc:leave_voice_room', (data: { channelId?: string; breakoutId?: string; roomKey?: string }, callback?: AckCallback) => {
       if (socket.user) {
-        const roomKey = data.breakoutId ? `breakout:${data.breakoutId}` : `voice:${data.channelId}`;
-        socket.leave(roomKey);
-        socket.to(roomKey).emit('webrtc:user_disconnected', { socketId: socket.id, userId: socket.user.id });
+        const roomKey = data.roomKey || (data.breakoutId ? `breakout:${data.breakoutId}` : `voice:${data.channelId}`);
+        if (roomKey) {
+          socket.leave(roomKey);
+          socket.to(roomKey).emit('webrtc:user_disconnected', { socketId: socket.id, userId: socket.user.id });
+        }
         presenceStore.updateChannel(socket.user.id, undefined, undefined, undefined, 'online');
         io.emit('presence:sync', presenceStore.getAllPresences());
       }
