@@ -368,11 +368,23 @@ export const useWebRTC = (channelId?: string, breakoutId?: string) => {
 
   // Toggle Mute
   const toggleMute = () => {
+    const nextIsMuted = !isMuted;
+    setIsMuted(nextIsMuted);
+
     if (localStreamRef.current) {
-      const audioTracks = localStreamRef.current.getAudioTracks();
-      audioTracks.forEach((t) => (t.enabled = isMuted)); // invert current muted state
-      setIsMuted(!isMuted);
+      localStreamRef.current.getAudioTracks().forEach((track) => {
+        track.enabled = !nextIsMuted;
+      });
     }
+
+    // Also update sender tracks across all active peer connections!
+    peerConnections.current.forEach((pc) => {
+      pc.getSenders().forEach((sender) => {
+        if (sender.track && sender.track.kind === 'audio') {
+          sender.track.enabled = !nextIsMuted;
+        }
+      });
+    });
   };
 
   // Toggle Deafen
