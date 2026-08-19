@@ -311,6 +311,55 @@ export const setupSocketHandlers = (io: Server): void => {
       callback?.({ success: true, data: { breakoutId, breakoutName: name, onlineMembers, offlineMembers } });
     });
 
+    socket.on('admin:invite_to_breakout', (data: { breakoutId: string; memberIds: string[] }, callback?: AckCallback) => {
+      if (socket.user?.role !== 'admin') {
+        const errMsg = 'Only admins can add members to breakout meetings';
+        socket.emit('error', { message: errMsg });
+        callback?.({ success: false, message: errMsg });
+        return;
+      }
+
+      const { breakoutId, memberIds } = data;
+      const breakout = activeBreakouts.get(breakoutId);
+      if (!breakout) {
+        const errMsg = 'Breakout meeting not found';
+        socket.emit('error', { message: errMsg });
+        callback?.({ success: false, message: errMsg });
+        return;
+      }
+
+      if (!Array.isArray(memberIds) || memberIds.length === 0) {
+        const errMsg = 'Please select at least one member to invite';
+        socket.emit('error', { message: errMsg });
+        callback?.({ success: false, message: errMsg });
+        return;
+      }
+
+      const newlyInvited: string[] = [];
+
+      memberIds.forEach((targetUserId) => {
+        breakout.memberIds.add(targetUserId);
+        const presence = presenceStore.getUser(targetUserId);
+        if (presence && presence.socketIds.size > 0) {
+          newlyInvited.push(targetUserId);
+          io.to(`user:${targetUserId}`).emit('breakout:invited', {
+            breakoutId,
+            breakoutName: breakout.name,
+            createdBy: socket.user?.name,
+            invitedMembers: Array.from(breakout.memberIds),
+          });
+        }
+      });
+
+      console.log(`[Breakout] Admin ${socket.user.name} added ${newlyInvited.length} member(s) to '${breakout.name}' (${breakoutId})`);
+
+      callback?.({
+        success: true,
+        message: `Invited ${newlyInvited.length} member(s) to meeting`,
+        data: { breakoutId, newlyInvited },
+      });
+    });
+
     // --- WebRTC Signaling & Breakout Authorization (F2) ---
     socket.on('webrtc:join_voice_room', async (data: { channelId: string; breakoutId?: string }, callback?: AckCallback) => {
       try {

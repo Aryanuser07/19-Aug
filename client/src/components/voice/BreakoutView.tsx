@@ -2,11 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useWorkspaceStore, ActiveBreakout } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useWebRTC, RemoteParticipant } from '../../hooks/useWebRTC';
-import { Lock, Mic, MicOff, Headphones, PhoneOff, Video, VideoOff, ShieldAlert } from 'lucide-react';
+import { socketService } from '../../services/socket';
+import { Lock, Mic, MicOff, Headphones, PhoneOff, Video, VideoOff, ShieldAlert, UserPlus, X, Send } from 'lucide-react';
 
 export const BreakoutView: React.FC<{ breakout: ActiveBreakout }> = ({ breakout }) => {
   const { user } = useAuthStore();
   const { setActiveBreakout } = useWorkspaceStore();
+  const [isAddMembersOpen, setIsAddMembersOpen] = useState(false);
 
   const {
     localStream,
@@ -58,9 +60,22 @@ export const BreakoutView: React.FC<{ breakout: ActiveBreakout }> = ({ breakout 
           </div>
         </div>
 
-        <div className="flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 px-3.5 py-1.5 text-xs font-semibold text-amber-300">
-          <ShieldAlert className="h-3.5 w-3.5 animate-pulse" />
-          <span>Encrypted WebRTC Session</span>
+        <div className="flex items-center gap-3">
+          {/* Admin Add Participants Button */}
+          {user?.role === 'admin' && (
+            <button
+              onClick={() => setIsAddMembersOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition shadow-sm"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span>Add Participants</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 px-3.5 py-1.5 text-xs font-semibold text-amber-300">
+            <ShieldAlert className="h-3.5 w-3.5 animate-pulse" />
+            <span>Encrypted WebRTC Session</span>
+          </div>
         </div>
       </div>
 
@@ -183,6 +198,138 @@ export const BreakoutView: React.FC<{ breakout: ActiveBreakout }> = ({ breakout 
         <div className="text-xs text-gray-500 font-mono">
           Private Room Mesh
         </div>
+      </div>
+
+      {/* Add Members Modal */}
+      <AddBreakoutMembersModal
+        isOpen={isAddMembersOpen}
+        breakoutId={breakout.breakoutId}
+        onClose={() => setIsAddMembersOpen(false)}
+      />
+    </div>
+  );
+};
+
+// Add Members Modal Component
+const AddBreakoutMembersModal: React.FC<{ isOpen: boolean; breakoutId: string; onClose: () => void }> = ({
+  isOpen,
+  breakoutId,
+  onClose,
+}) => {
+  const { onlinePresences, addToast } = useWorkspaceStore();
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  if (!isOpen) return null;
+
+  const toggleSelectMember = (userId: string) => {
+    setSelectedMemberIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleInviteMembers = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedMemberIds.length === 0) return;
+
+    try {
+      setIsLoading(true);
+      const ack = await socketService.emitWithAck('admin:invite_to_breakout', {
+        breakoutId,
+        memberIds: selectedMemberIds,
+      });
+
+      if (ack.success) {
+        addToast({
+          type: 'success',
+          title: 'Invites Sent',
+          message: ack.message || 'Invited additional members to breakout meeting',
+        });
+        onClose();
+      } else {
+        addToast({
+          type: 'error',
+          title: 'Invite Error',
+          message: ack.message || 'Could not send meeting invites',
+        });
+      }
+    } catch (err) {
+      addToast({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to send breakout invites',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-2xl border border-amber-500/30 bg-dark-900 p-6 shadow-2xl">
+        <div className="flex items-center justify-between pb-4 border-b border-white/10">
+          <div className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-amber-400" />
+            <h3 className="text-lg font-bold text-white">Add Participants to Meeting</h3>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleInviteMembers} className="mt-4 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300">
+              Select Online Team Members ({selectedMemberIds.length} selected)
+            </label>
+            <div className="mt-2 max-h-48 overflow-y-auto space-y-1.5 border border-white/10 rounded-xl bg-dark-800 p-2">
+              {onlinePresences.length === 0 ? (
+                <div className="text-center py-4 text-xs text-gray-500">No online users available to invite</div>
+              ) : (
+                onlinePresences.map((member) => {
+                  const isChecked = selectedMemberIds.includes(member.userId);
+                  return (
+                    <label
+                      key={member.userId}
+                      className={`flex items-center justify-between rounded-lg p-2 text-xs font-medium cursor-pointer transition ${
+                        isChecked ? 'bg-amber-500/20 text-white' : 'hover:bg-white/5 text-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSelectMember(member.userId)}
+                          className="rounded border-white/20 bg-dark-900 text-amber-500 focus:ring-0"
+                        />
+                        <span>{member.userName}</span>
+                      </div>
+                      <span className="text-[10px] text-amber-400 uppercase font-mono">{member.role}</span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2.5 pt-4 border-t border-white/10">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-white/10 bg-dark-800 px-4 py-2 text-xs font-semibold text-gray-300 hover:bg-dark-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={selectedMemberIds.length === 0 || isLoading}
+              className="flex items-center gap-1.5 rounded-xl bg-amber-600 px-5 py-2 text-xs font-semibold text-white shadow-lg shadow-amber-600/20 hover:bg-amber-500 disabled:opacity-50"
+            >
+              <Send className="h-4 w-4" />
+              Send Invites
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
