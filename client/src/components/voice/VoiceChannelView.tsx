@@ -90,7 +90,7 @@ export const VoiceChannelView: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {/* Local Participant Card */}
             <div
               className={`relative flex flex-col items-center justify-center rounded-2xl border bg-dark-900/90 p-5 shadow-xl backdrop-blur-md transition ${
