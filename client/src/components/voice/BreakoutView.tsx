@@ -204,6 +204,7 @@ export const BreakoutView: React.FC<{ breakout: ActiveBreakout }> = ({ breakout 
       <AddBreakoutMembersModal
         isOpen={isAddMembersOpen}
         breakoutId={breakout.breakoutId}
+        currentParticipants={remoteParticipants}
         onClose={() => setIsAddMembersOpen(false)}
       />
     </div>
@@ -211,16 +212,26 @@ export const BreakoutView: React.FC<{ breakout: ActiveBreakout }> = ({ breakout 
 };
 
 // Add Members Modal Component
-const AddBreakoutMembersModal: React.FC<{ isOpen: boolean; breakoutId: string; onClose: () => void }> = ({
+const AddBreakoutMembersModal: React.FC<{ isOpen: boolean; breakoutId: string; currentParticipants: RemoteParticipant[]; onClose: () => void }> = ({
   isOpen,
   breakoutId,
+  currentParticipants,
   onClose,
 }) => {
   const { onlinePresences, addToast } = useWorkspaceStore();
+  const { user } = useAuthStore();
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
+
+  // Filter out self and members already in a breakout session
+  const availableMembers = onlinePresences.filter((member) => {
+    if (member.userId === user?.id) return false;
+    if (member.status === 'in-breakout') return false;
+    if (currentParticipants.some((p) => p.user.id === member.userId)) return false;
+    return true;
+  });
 
   const toggleSelectMember = (userId: string) => {
     setSelectedMemberIds((prev) =>
@@ -245,6 +256,7 @@ const AddBreakoutMembersModal: React.FC<{ isOpen: boolean; breakoutId: string; o
           title: 'Invites Sent',
           message: ack.message || 'Invited additional members to breakout meeting',
         });
+        setSelectedMemberIds([]);
         onClose();
       } else {
         addToast({
@@ -283,10 +295,12 @@ const AddBreakoutMembersModal: React.FC<{ isOpen: boolean; breakoutId: string; o
               Select Online Team Members ({selectedMemberIds.length} selected)
             </label>
             <div className="mt-2 max-h-48 overflow-y-auto space-y-1.5 border border-white/10 rounded-xl bg-dark-800 p-2">
-              {onlinePresences.length === 0 ? (
-                <div className="text-center py-4 text-xs text-gray-500">No online users available to invite</div>
+              {availableMembers.length === 0 ? (
+                <div className="text-center py-4 text-xs text-gray-500">
+                  All online team members are already in a breakout or unavailable
+                </div>
               ) : (
-                onlinePresences.map((member) => {
+                availableMembers.map((member) => {
                   const isChecked = selectedMemberIds.includes(member.userId);
                   return (
                     <label

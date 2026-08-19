@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { socketService } from '../../services/socket';
 import { Users, X, Lock, PhoneCall, Sparkles } from 'lucide-react';
 
@@ -10,11 +11,18 @@ interface BreakoutCreatorModalProps {
 
 export const BreakoutCreatorModal: React.FC<BreakoutCreatorModalProps> = ({ isOpen, onClose }) => {
   const { onlinePresences, addToast, setActiveBreakout } = useWorkspaceStore();
+  const { user } = useAuthStore();
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [breakoutName, setBreakoutName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
+
+  const availableMembers = onlinePresences.filter((member) => {
+    if (member.userId === user?.id) return false;
+    if (member.status === 'in-breakout') return false;
+    return true;
+  });
 
   const toggleSelectMember = (userId: string) => {
     setSelectedMemberIds((prev) =>
@@ -92,10 +100,12 @@ export const BreakoutCreatorModal: React.FC<BreakoutCreatorModalProps> = ({ isOp
               Select Online Members ({selectedMemberIds.length} selected)
             </label>
             <div className="mt-2 max-h-48 overflow-y-auto space-y-1.5 border border-white/10 rounded-xl bg-dark-800 p-2">
-              {onlinePresences.length === 0 ? (
-                <div className="text-center py-4 text-xs text-gray-500">No online users to invite</div>
+              {availableMembers.length === 0 ? (
+                <div className="text-center py-4 text-xs text-gray-500">
+                  No online team members available to invite
+                </div>
               ) : (
-                onlinePresences.map((member) => {
+                availableMembers.map((member) => {
                   const isChecked = selectedMemberIds.includes(member.userId);
                   return (
                     <label
