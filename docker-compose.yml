@@ -1,0 +1,48 @@
+version: '3.9'
+
+services:
+  # 1. MongoDB Database
+  mongo:
+    image: mongo:latest
+    container_name: tcp-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: team_collaboration
+    volumes:
+      - mongo-data:/data/db
+
+  # 2. Node.js Express + Socket.io Server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: tcp-server
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      MONGO_URI: mongodb://mongo:27017/team_collaboration
+      JWT_SECRET: supersecret_jwt_key_team_collaboration_2026
+      CLIENT_ORIGIN: http://localhost:5173
+    depends_on:
+      - mongo
+
+  # 3. LiveKit WebRTC SFU Server (Self-Hosted for Scalable Group Audio/Video)
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: tcp-livekit
+    command: --config /etc/livekit.yaml
+    restart: always
+    ports:
+      - "7880:7880"   # HTTP / WebSocket API
+      - "7881:7881"   # TCP fallback
+      - "7882:7882/udp" # UDP ICE
+      - "50000-60000:50000-60000/udp" # WebRTC media transport range
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+
+volumes:
+  mongo-data:
