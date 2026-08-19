@@ -398,6 +398,12 @@ export const setupSocketHandlers = (io: Server): void => {
         const roomKey = breakoutId ? `breakout:${breakoutId}` : `voice:${channelId}`;
         socket.join(roomKey);
 
+        if (breakoutId) {
+          const breakout = activeBreakouts.get(breakoutId);
+          presenceStore.updateChannel(socket.user.id, undefined, undefined, breakout?.name || 'Private Breakout', 'in-breakout');
+          io.emit('presence:sync', presenceStore.getAllPresences());
+        }
+
         const existingParticipants = Array.from(io.sockets.adapter.rooms.get(roomKey) || [])
           .filter((id) => id !== socket.id);
 
@@ -411,6 +417,17 @@ export const setupSocketHandlers = (io: Server): void => {
         socket.emit('error', { message: 'Error joining voice room' });
         callback?.({ success: false, message: 'Error joining voice room' });
       }
+    });
+
+    socket.on('webrtc:leave_voice_room', (data: { channelId?: string; breakoutId?: string }, callback?: AckCallback) => {
+      if (socket.user) {
+        const roomKey = data.breakoutId ? `breakout:${data.breakoutId}` : `voice:${data.channelId}`;
+        socket.leave(roomKey);
+        socket.to(roomKey).emit('webrtc:user_disconnected', { socketId: socket.id, userId: socket.user.id });
+        presenceStore.updateChannel(socket.user.id, undefined, undefined, undefined, 'online');
+        io.emit('presence:sync', presenceStore.getAllPresences());
+      }
+      callback?.({ success: true });
     });
 
     socket.on('webrtc:signal', (data: { targetSocketId: string; signal: any; breakoutId?: string; channelId?: string }, callback?: AckCallback) => {

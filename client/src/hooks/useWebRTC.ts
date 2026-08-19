@@ -256,11 +256,11 @@ export const useWebRTC = (channelId?: string, breakoutId?: string) => {
     setRemoteParticipants(new Map());
     setIsConnected(false);
 
-    if (channelId) {
+    if (channelId || breakoutId) {
       const socket = socketService.getSocket();
-      socket?.emit('webrtc:leave_voice_room', { channelId });
+      socket?.emit('webrtc:leave_voice_room', { channelId, breakoutId });
     }
-  }, [channelId]);
+  }, [channelId, breakoutId]);
 
   // Socket Signal & Disconnect Event Listeners
   useEffect(() => {
