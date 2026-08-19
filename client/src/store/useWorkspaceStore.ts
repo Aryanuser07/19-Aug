@@ -74,6 +74,9 @@ interface WorkspaceState {
   setupSocketListeners: () => void;
 }
 
+const LAST_ROOM_KEY = 'tcp_last_room_id';
+const LAST_CHANNEL_KEY = 'tcp_last_channel_id';
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   rooms: [],
   channels: [],
@@ -90,10 +93,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       const rooms: Room[] = res.data.rooms;
       set({ rooms });
 
-      // Auto-select first room (or Common Room) if none selected
+      // Restore last visited room from localStorage on reload, or fallback to default room
       if (rooms.length > 0 && !get().currentRoom) {
-        const defaultRoom = rooms.find((r) => r.isDefault) || rooms[0];
-        get().selectRoom(defaultRoom);
+        const savedRoomId = localStorage.getItem(LAST_ROOM_KEY);
+        const savedRoom = rooms.find((r) => r._id === savedRoomId);
+        const targetRoom = savedRoom || rooms.find((r) => r.isDefault) || rooms[0];
+        get().selectRoom(targetRoom);
       }
     } catch (err) {
       console.error('Failed to fetch rooms', err);
@@ -101,6 +106,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   selectRoom: async (room) => {
+    localStorage.setItem(LAST_ROOM_KEY, room._id);
     set({ currentRoom: room, channels: [], currentChannel: null, messages: [] });
     try {
       const res = await api.get(`/rooms/${room._id}/channels`);
@@ -108,8 +114,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       set({ channels });
 
       if (channels.length > 0) {
-        const defaultChannel = channels.find((c) => c.isDefault) || channels[0];
-        get().selectChannel(defaultChannel);
+        // Restore last visited channel in this room from localStorage on reload, or fallback to default
+        const savedChannelId = localStorage.getItem(LAST_CHANNEL_KEY);
+        const savedChannel = channels.find((c) => c._id === savedChannelId);
+        const targetChannel = savedChannel || channels.find((c) => c.isDefault) || channels[0];
+        get().selectChannel(targetChannel);
       }
     } catch (err) {
       console.error('Failed to fetch channels for room', err);
@@ -118,6 +127,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   selectChannel: async (channel) => {
     const { currentRoom, currentChannel } = get();
+
+    localStorage.setItem(LAST_CHANNEL_KEY, channel._id);
 
     if (currentChannel?._id === channel._id) return;
 
