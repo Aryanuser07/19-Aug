@@ -99,10 +99,10 @@ export const useWebRTC = (channelId?: string, breakoutId?: string) => {
         return next;
       });
 
-      // Attach audio analyzer for remote volume level
-      if (!remoteAnalyzersRef.current.has(targetSocketId)) {
-        const stream = event.streams[0] || new MediaStream([incomingTrack]);
-        const analyzer = new AudioAnalyzer(stream, (vol) => {
+      // Attach audio analyzer for remote volume level if stream contains audio tracks
+      const streamForAnalysis = event.streams[0] || new MediaStream([incomingTrack]);
+      if (!remoteAnalyzersRef.current.has(targetSocketId) && streamForAnalysis.getAudioTracks().length > 0) {
+        const analyzer = new AudioAnalyzer(streamForAnalysis, (vol) => {
           setRemoteParticipants((prev) => {
             const next = new Map(prev);
             const p = next.get(targetSocketId);
@@ -346,7 +346,9 @@ export const useWebRTC = (channelId?: string, breakoutId?: string) => {
           // addTrack() calls can now safely trigger renegotiation.
           initialNegotiationDone.current.add(senderSocketId);
         } else if (signal.type === 'answer') {
-          await pc.setRemoteDescription(new RTCSessionDescription(signal));
+          if (pc.signalingState === 'have-local-offer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(signal));
+          }
         } else if (signal.candidate) {
           await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
         }

@@ -363,13 +363,14 @@ const BreakoutParticipantCard: React.FC<{ participant: RemoteParticipant; isDeaf
     const stream = participant.stream;
     const updateVideo = () => {
       const liveVideoTracks = stream.getVideoTracks().filter((t) => t.readyState === 'live' && t.enabled);
-      setHasVideoTrack(liveVideoTracks.length > 0);
+      const isVideoActive = liveVideoTracks.length > 0;
+      setHasVideoTrack(isVideoActive);
 
-      if (videoRef.current && stream && liveVideoTracks.length > 0) {
+      if (isVideoActive && videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play().catch(() => {});
       }
-      if (audioRef.current && stream) {
+      if (!isVideoActive && audioRef.current) {
         audioRef.current.srcObject = stream;
         audioRef.current.play().catch(() => {});
       }
@@ -391,7 +392,6 @@ const BreakoutParticipantCard: React.FC<{ participant: RemoteParticipant; isDeaf
         videoRef.current.pause();
         videoRef.current.srcObject = null;
       }
-      stream.getTracks().forEach((track) => track.stop());
     };
   }, [participant.stream, hasVideoTrack]);
 
@@ -401,18 +401,24 @@ const BreakoutParticipantCard: React.FC<{ participant: RemoteParticipant; isDeaf
         participant.volume > 15 ? 'border-amber-500/80 shadow-amber-500/20 pulse-speaking' : 'border-white/10'
       }`}
     >
-      {/* Remote Audio Track Element */}
-      <audio ref={audioRef} autoPlay muted={isDeafened} />
-
       <div className="relative">
         {hasVideoTrack ? (
-          <video ref={videoRef} autoPlay playsInline className="h-24 w-32 rounded-xl object-cover border border-white/10" />
-        ) : (
-          <img
-            src={participant.user.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${participant.user.name}`}
-            alt={participant.user.name}
-            className="h-20 w-20 rounded-2xl object-cover border-2 border-white/10 shadow-lg"
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted={isDeafened}
+            className="h-24 w-32 rounded-xl object-cover border border-white/10"
           />
+        ) : (
+          <>
+            <audio ref={audioRef} autoPlay muted={isDeafened} />
+            <img
+              src={participant.user.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${participant.user.name}`}
+              alt={participant.user.name}
+              className="h-20 w-20 rounded-2xl object-cover border-2 border-white/10 shadow-lg"
+            />
+          </>
         )}
       </div>
 
