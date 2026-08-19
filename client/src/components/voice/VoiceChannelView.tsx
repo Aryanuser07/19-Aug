@@ -249,6 +249,15 @@ const RemoteParticipantCard: React.FC<{ participant: RemoteParticipant; isDeafen
     return () => {
       stream.removeEventListener('addtrack', updateVideo);
       stream.removeEventListener('removetrack', updateVideo);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.srcObject = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.srcObject = null;
+      }
+      stream.getTracks().forEach((track) => track.stop());
     };
   }, [participant.stream, hasVideoTrack]);
 

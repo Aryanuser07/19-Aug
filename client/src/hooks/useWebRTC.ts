@@ -149,6 +149,12 @@ export const useWebRTC = (channelId?: string, breakoutId?: string) => {
   const closePeerConnection = useCallback((socketId: string) => {
     const pc = peerConnections.current.get(socketId);
     if (pc) {
+      pc.getReceivers().forEach((receiver) => {
+        if (receiver.track) receiver.track.stop();
+      });
+      pc.getSenders().forEach((sender) => {
+        if (sender.track) sender.track.stop();
+      });
       pc.close();
       peerConnections.current.delete(socketId);
     }
@@ -246,7 +252,15 @@ export const useWebRTC = (channelId?: string, breakoutId?: string) => {
       localAnalyzerRef.current = null;
     }
 
-    peerConnections.current.forEach((pc) => pc.close());
+    peerConnections.current.forEach((pc) => {
+      pc.getReceivers().forEach((receiver) => {
+        if (receiver.track) receiver.track.stop();
+      });
+      pc.getSenders().forEach((sender) => {
+        if (sender.track) sender.track.stop();
+      });
+      pc.close();
+    });
     peerConnections.current.clear();
     initialNegotiationDone.current.clear();
 
