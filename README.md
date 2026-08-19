@@ -192,4 +192,4 @@ Services exposed:
 
 ## 📄 License
 
-Distributed under the **MIT License**.
+This project is proprietary and confidential. Copyright © 2026. All Rights Reserved.
