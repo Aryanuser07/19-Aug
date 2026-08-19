@@ -24,6 +24,23 @@ export const VoiceChannelView: React.FC = () => {
   } = useWebRTC(currentChannel?._id);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
+  const hasUserLeftRef = useRef(false);
+
+  useEffect(() => {
+    hasUserLeftRef.current = false;
+  }, [currentChannel?._id]);
+
+  // Auto-connect to WebRTC voice lounge when selecting or being moved into a voice channel
+  useEffect(() => {
+    if (
+      currentChannel &&
+      (currentChannel.type === 'voice' || currentChannel.type === 'video') &&
+      !isConnected &&
+      !hasUserLeftRef.current
+    ) {
+      joinVoice();
+    }
+  }, [currentChannel?._id, isConnected, joinVoice]);
 
   useEffect(() => {
     if (localVideoRef.current && localStream && isVideoOn) {
@@ -31,6 +48,11 @@ export const VoiceChannelView: React.FC = () => {
       localVideoRef.current.play().catch((err) => console.warn('Local video play warning:', err));
     }
   }, [localStream, isVideoOn]);
+
+  const handleDisconnect = () => {
+    hasUserLeftRef.current = true;
+    leaveVoice();
+  };
 
   if (!currentChannel) return null;
 
@@ -175,7 +197,7 @@ export const VoiceChannelView: React.FC = () => {
             </button>
 
             <button
-              onClick={leaveVoice}
+              onClick={handleDisconnect}
               title="Disconnect Voice Call"
               className="flex h-12 px-6 items-center gap-2 rounded-2xl bg-red-600 font-semibold text-xs text-white shadow-lg shadow-red-600/30 hover:bg-red-500 transition"
             >
