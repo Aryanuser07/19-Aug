@@ -5,6 +5,7 @@ import { RoomSidebar } from '../navigation/RoomSidebar';
 import { ChannelSidebar } from '../navigation/ChannelSidebar';
 import { ChatView } from '../chat/ChatView';
 import { VoiceChannelView } from '../voice/VoiceChannelView';
+import { BreakoutView } from '../voice/BreakoutView';
 import { PresencePanel } from '../presence/PresencePanel';
 import { AdminDragDropDashboard } from '../admin/AdminDragDropDashboard';
 import { BreakoutCreatorModal, BreakoutInviteModal } from '../admin/BreakoutModal';
@@ -12,7 +13,7 @@ import { ToastContainer } from '../common/ToastContainer';
 import { Shield, PhoneCall, LayoutDashboard, MessageSquare } from 'lucide-react';
 
 export const MainLayout: React.FC = () => {
-  const { currentRoom, currentChannel, fetchRooms, setupSocketListeners } = useWorkspaceStore();
+  const { currentRoom, currentChannel, activeBreakout, fetchRooms, setupSocketListeners } = useWorkspaceStore();
   const { user } = useAuthStore();
   const [isAdminDashboardView, setIsAdminDashboardView] = useState(false);
   const [isBreakoutModalOpen, setIsBreakoutModalOpen] = useState(false);
@@ -39,7 +40,9 @@ export const MainLayout: React.FC = () => {
         <div className="flex h-14 items-center justify-between border-b border-white/5 bg-dark-900 px-6 shrink-0">
           <div className="flex items-center gap-3">
             <h1 className="text-sm font-bold text-white tracking-wide">
-              {currentRoom?.name} <span className="text-gray-500 font-normal">/</span> {currentChannel ? `#${currentChannel.name}` : 'Overview'}
+              {activeBreakout
+                ? `Private Breakout / ${activeBreakout.breakoutName}`
+                : `${currentRoom?.name || 'Room'} / ${currentChannel ? `#${currentChannel.name}` : 'Overview'}`}
             </h1>
           </div>
 
@@ -71,7 +74,9 @@ export const MainLayout: React.FC = () => {
 
         {/* Dynamic Center Main View */}
         <div className="flex-1 overflow-hidden">
-          {isAdminDashboardView ? (
+          {activeBreakout ? (
+            <BreakoutView breakout={activeBreakout} />
+          ) : isAdminDashboardView ? (
             <AdminDragDropDashboard />
           ) : isVoiceChannel ? (
             <VoiceChannelView />

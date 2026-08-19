@@ -9,7 +9,7 @@ interface BreakoutCreatorModalProps {
 }
 
 export const BreakoutCreatorModal: React.FC<BreakoutCreatorModalProps> = ({ isOpen, onClose }) => {
-  const { onlinePresences, addToast } = useWorkspaceStore();
+  const { onlinePresences, addToast, setActiveBreakout } = useWorkspaceStore();
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [breakoutName, setBreakoutName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,6 +38,10 @@ export const BreakoutCreatorModal: React.FC<BreakoutCreatorModalProps> = ({ isOp
           type: 'success',
           title: 'Breakout Session Launched',
           message: `Created isolated meeting '${ack.data?.breakoutName || 'Private Breakout'}'`,
+        });
+        setActiveBreakout({
+          breakoutId: ack.data.breakoutId,
+          breakoutName: ack.data.breakoutName,
         });
         onClose();
       } else {
@@ -142,7 +146,7 @@ export const BreakoutCreatorModal: React.FC<BreakoutCreatorModalProps> = ({ isOp
 
 // Client Breakout Invitation Popup Modal
 export const BreakoutInviteModal: React.FC = () => {
-  const { breakoutInvite, setBreakoutInvite } = useWorkspaceStore();
+  const { breakoutInvite, setBreakoutInvite, setActiveBreakout } = useWorkspaceStore();
 
   if (!breakoutInvite) return null;
 
@@ -168,8 +172,12 @@ export const BreakoutInviteModal: React.FC = () => {
           </button>
           <button
             onClick={() => {
+              setActiveBreakout({
+                breakoutId: breakoutInvite.breakoutId,
+                breakoutName: breakoutInvite.breakoutName,
+                createdBy: breakoutInvite.createdBy,
+              });
               setBreakoutInvite(null);
-              // Join breakout room
             }}
             className="flex items-center gap-2 rounded-xl bg-amber-600 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-amber-600/30 hover:bg-amber-500"
           >

@@ -52,6 +52,13 @@ export interface Toast {
   message?: string;
 }
 
+export interface ActiveBreakout {
+  breakoutId: string;
+  breakoutName: string;
+  createdBy?: string;
+  invitedMembers?: string[];
+}
+
 interface WorkspaceState {
   rooms: Room[];
   channels: Channel[];
@@ -60,6 +67,7 @@ interface WorkspaceState {
   messages: Message[];
   onlinePresences: PresenceUser[];
   breakoutInvite: { breakoutId: string; breakoutName: string; createdBy: string; invitedMembers: string[] } | null;
+  activeBreakout: ActiveBreakout | null;
   toasts: Toast[];
 
   fetchRooms: () => Promise<void>;
@@ -69,6 +77,7 @@ interface WorkspaceState {
   addMessage: (msg: Message) => void;
   setOnlinePresences: (presences: PresenceUser[]) => void;
   setBreakoutInvite: (invite: any) => void;
+  setActiveBreakout: (breakout: ActiveBreakout | null) => void;
   addToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
   setupSocketListeners: () => void;
@@ -85,6 +94,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   messages: [],
   onlinePresences: [],
   breakoutInvite: null,
+  activeBreakout: null,
   toasts: [],
 
   fetchRooms: async () => {
@@ -181,6 +191,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   setOnlinePresences: (presences) => set({ onlinePresences: presences }),
   setBreakoutInvite: (invite) => set({ breakoutInvite: invite }),
+  setActiveBreakout: (breakout) => set({ activeBreakout: breakout }),
 
   addToast: (toast) => {
     const id = `toast_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
